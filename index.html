@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebGL Shader Explorer — Three.js Shader Development Tool</title>
+    <meta name="description" content="Three.js Fragment / Vertex Shader の開発・調整ツール。プリセットから始めてリアルタイムプレビュー。">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+
+    <!-- CodeMirror 6 via CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/material-darker.min.css">
+
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- OrbitControls -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <!-- CodeMirror -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/clike/clike.min.js"></script>
+
+    <link rel="stylesheet" href="style.css">
+    <!-- dat.gui for light controls -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.9/dat.gui.min.js"></script>
+</head>
+
+<body>
+    <div id="app">
+        <!-- Header -->
+        <header id="header">
+            <div class="header-left">
+                <div class="logo">
+                    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+                        <rect x="2" y="2" width="24" height="24" rx="6" stroke="url(#logo-grad)" stroke-width="2.5" />
+                        <path d="M8 14L14 8L20 14L14 20Z" fill="url(#logo-grad)" opacity="0.6" />
+                        <path d="M11 14L14 11L17 14L14 17Z" fill="url(#logo-grad)" />
+                        <defs>
+                            <linearGradient id="logo-grad" x1="0" y1="0" x2="28" y2="28">
+                                <stop offset="0%" stop-color="#818cf8" />
+                                <stop offset="100%" stop-color="#c084fc" />
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                    <h1>Shader Explorer</h1>
+                </div>
+            </div>
+            <div class="header-center">
+                <div class="geometry-switcher" id="geometrySwitcher">
+                    <button class="geo-btn active" data-geo="cube" id="btn-cube" title="立方体">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1.8">
+                            <path d="M12 2L2 7V17L12 22L22 17V7L12 2Z" />
+                            <path d="M12 22V12" />
+                            <path d="M22 7L12 12" />
+                            <path d="M2 7L12 12" />
+                        </svg>
+                        <span>Cube</span>
+                    </button>
+                    <button class="geo-btn" data-geo="sphere" id="btn-sphere" title="球">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1.8">
+                            <circle cx="12" cy="12" r="10" />
+                            <ellipse cx="12" cy="12" rx="10" ry="4" />
+                            <path d="M12 2C14.5 2 16.5 6.5 16.5 12S14.5 22 12 22S7.5 17.5 7.5 12S9.5 2 12 2Z" />
+                        </svg>
+                        <span>Sphere</span>
+                    </button>
+                    <button class="geo-btn" data-geo="gem" id="btn-gem" title="宝石">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1.8">
+                            <path d="M6 3H18L22 9L12 21L2 9L6 3Z" />
+                            <path d="M2 9H22" />
+                            <path d="M12 21L9 9L6 3" />
+                            <path d="M12 21L15 9L18 3" />
+                            <path d="M12 3V9" />
+                        </svg>
+                        <span>Gem</span>
+                    </button>
+                </div>
+            </div>
+            <div class="header-right">
+                <button class="compile-btn" id="compileBtn" title="シェーダーを適用 (Ctrl+Enter)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M8 5V19L19 12L8 5Z" />
+                    </svg>
+                    Apply
+                </button>
+                <div class="helpers-toggle">
+                    <label class="toggle-label">
+                        <input type="checkbox" id="gridToggle" checked>
+                        <span class="toggle-slider"></span>
+                        Grid
+                    </label>
+                    <label class="toggle-label">
+                        <input type="checkbox" id="axisToggle">
+                        <span class="toggle-slider"></span>
+                        Axes
+                    </label>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main id="main">
+            <!-- Left Panel: Shader Editors -->
+            <div class="panel-editors" id="panelEditors">
+                <!-- Vertex Shader -->
+                <div class="editor-section" id="vertexSection">
+                    <div class="editor-header">
+                        <div class="editor-title">
+                            <div class="editor-dot vertex"></div>
+                            <h2>Vertex Shader</h2>
+                        </div>
+                        <div class="preset-dropdown">
+                            <button class="preset-trigger" id="vertexPresetBtn">
+                                <span>Presets</span>
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2.5">
+                                    <path d="M6 9L12 15L18 9" />
+                                </svg>
+                            </button>
+                            <div class="preset-menu" id="vertexPresetMenu">
+                                <!-- Populated by JS -->
+                            </div>
+                        </div>
+                    </div>
+                    <div class="editor-wrapper">
+                        <textarea id="vertexEditor"></textarea>
+                    </div>
+                </div>
+
+                <!-- Resize Handle -->
+                <div class="editor-resize-handle" id="editorResizeHandle"></div>
+
+                <!-- Fragment Shader -->
+                <div class="editor-section" id="fragmentSection">
+                    <div class="editor-header">
+                        <div class="editor-title">
+                            <div class="editor-dot fragment"></div>
+                            <h2>Fragment Shader</h2>
+                        </div>
+                        <div class="preset-dropdown">
+                            <button class="preset-trigger" id="fragmentPresetBtn">
+                                <span>Presets</span>
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2.5">
+                                    <path d="M6 9L12 15L18 9" />
+                                </svg>
+                            </button>
+                            <div class="preset-menu" id="fragmentPresetMenu">
+                                <!-- Populated by JS -->
+                            </div>
+                        </div>
+                    </div>
+                    <div class="editor-wrapper">
+                        <textarea id="fragmentEditor"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Resize Handle (Panels) -->
+            <div class="panel-resize-handle" id="panelResizeHandle"></div>
+
+            <!-- Right Panel: 3D Viewport -->
+            <div class="panel-viewport" id="panelViewport">
+                <canvas id="viewport"></canvas>
+                <div class="viewport-overlay" id="viewportOverlay">
+                    <div class="error-display" id="errorDisplay"></div>
+                </div>
+                <div class="viewport-info" id="viewportInfo">
+                    <span id="fpsCounter">60 FPS</span>
+                    <span class="separator">·</span>
+                    <span id="geoInfo">Cube — 12 triangles</span>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="presets.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>
